@@ -1,19 +1,40 @@
 import re
 import numpy as np
+import tkinter as tk
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
 import os
-
+import sys
 
 Tk().withdraw()
-input_file = askopenfilename(title='Select file to calibrate')
-print(input_file)
-base_name = os.path.basename(input_file)
-path = askdirectory(title='Select output destination')
-os.chdir(path)
-output_file = f"calib_{base_name}"
-print(os.path.basename(input_file))
+window = tk.Tk()
+window.geometry("400x300")
+window.title("gcode straightener")
+window.configure(bg="white")
+
+def window_destroy():
+    sys.exit()
+
+def ask_fn(input_file, base_name):
+    input_file = askopenfilename(title='Select file to calibrate')
+    base_name = os.path.basename(input_file)
+    return input_file, base_name
+
+
+def ask_dir(base_name, output_file):
+
+    path = askdirectory(title='Select output destination')
+    os.chdir(path)
+    output_file = f"calib_{base_name}"
+    return output_file
+
+def save_mline(input_file, output_file):
+    with open(input_file, "r") as infile, open(output_file, "w") as outfile:
+        for line in infile:
+            modified_line = modify_gcode_line(line)
+            outfile.write(modified_line)
+
 
 x_tgAlfa = (np.tan(np.deg2rad(0.4)))
 y_tgAlfa = (np.tan(np.deg2rad(0.2)))
@@ -97,9 +118,26 @@ def modify_gcode_line(line):
 
     return line
 
-with open(input_file, "r") as infile, open(output_file, "w") as outfile:
-    for line in infile:
-        modified_line = modify_gcode_line(line)
-        outfile.write(modified_line)
+# input_file, base_name =  ask_fn()
+# output_file = ask_dir(base_name)
+# save_mline(input_file, output_file)
 
-print(f"Plik G-code został zmodyfikowany i zapisany jako {output_file}.")
+# print(f"Plik G-code został zmodyfikowany i zapisany jako {output_file}.")
+input_file, base_name = " ", " "
+output_file = " "
+
+browse_button = tk.Button(window, text="select file", command=lambda:ask_fn(input_file, base_name),width=15)
+dir_button =    tk.Button(window, text="select output file", command=lambda: ask_dir(base_name, output_file),width=15)
+modify_button = tk.Button(window, text="compute", command=lambda: save_mline(input_file, output_file), width = 15)
+exit_button =   tk.Button(window, text="exit", command=lambda:window_destroy(),width=15)
+x_value = tk.Entry(window)
+y_value = tk.Entry(window)
+
+x_value.grid(row = 0, column = 0, padx = 10, pady = 10)
+y_value.grid(row = 1, column = 0, padx = 10, pady = 10)
+browse_button.grid(row = 2, column = 0, padx = 10, pady = 10)
+dir_button.grid(row = 3, column = 0, padx = 10, pady = 10)
+modify_button.grid(row = 4, column = 0, padx = 10, pady = 10)
+exit_button.grid(row = 5, column = 0, padx = 10, pady = 10)
+
+window.mainloop()
