@@ -14,7 +14,7 @@ window.resizable(width=False, height=False)
 window.title("gcode straightener")
 window.configure(bg="white")
 
-mod_text = "compute to modify"
+mod_text = " "
 
 def window_destroy():
 
@@ -47,15 +47,16 @@ def save_mline(x,y):
 # x_tgAlfa = (np.tan(np.deg2rad(0.4)))
 # y_tgAlfa = (np.tan(np.deg2rad(0.2)))
 
-# nx = 0.0
-# ny = 0.0
-# x = 0.0
-# y = 0.0
+nx = 0.0
+ny = 0.0
+x = 0.0
+y = 0.0
 
 def modify_gcode_line(line, x_value, y_value):
-    # global nx, ny, x, y
+    #print(x_value, y_value)
+    global nx, ny, x, y
     global mod_text
-    nx, ny = 0, 0
+    #nx, ny = 0, 0
     x = float(x_value)
     y = float(y_value)
     x_tgAlfa = (np.tan(np.deg2rad(x)))
@@ -65,7 +66,6 @@ def modify_gcode_line(line, x_value, y_value):
         match = re.match(r';Z:([\d.]+)', line)
         if match:
             z = float(match.group(1))
-            #print(nx)
             nx = x_tgAlfa * z
             ny = y_tgAlfa * z
         # -------------------------
@@ -75,7 +75,6 @@ def modify_gcode_line(line, x_value, y_value):
             x = float(match2.group(1))
             y = float(match2.group(2))
             e = float(match2.group(3))
-
             x = x + nx
             y = y + ny
             return f"G1 X{x:.6f} Y{y:.6f} E{e:.6f}\n"
@@ -142,9 +141,9 @@ input_file, base_name, output_file = "","select input file", "select output dire
 window_frame = tk.LabelFrame(window, text="parameters", bg="white")
 
 
-axis_frame = tk.LabelFrame(window_frame, text="Axis Values", bg="white")
-input_frame = tk.LabelFrame(window_frame, text="input", bg="white")
-output_frame = tk.LabelFrame(window_frame, text="output", bg="white")
+axis_frame = tk.LabelFrame(window_frame, text="angle values", bg="white")
+input_frame = tk.LabelFrame(window_frame, text="input file", bg="white")
+output_frame = tk.LabelFrame(window_frame, text="output directory", bg="white")
 
 window_frame.grid(row = 0, column= 0, padx=10, pady=10, columnspan=2)
 
