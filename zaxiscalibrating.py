@@ -6,14 +6,12 @@ from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
 import os
 import sys
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from mpl_toolkits.mplot3d import Axes3D
+import open3d as o3d
 
 
 Tk().withdraw()
 window = tk.Tk()
-window.geometry("1200x600")
+window.geometry("380x470")
 window.resizable(width=False, height=False)
 window.title("gcode straightener")
 window.configure(bg="white")
@@ -52,9 +50,9 @@ def save_mline(x,y):
         for line in infile:
             modified_line = modify_gcode_line(line,x,y)
             outfile.write(modified_line)
-    plot_c(o_coords, m_coords)
-    o_coords = [[],[],[]]
-    m_coords = [[],[],[]]
+    plot(o_coords, m_coords)
+    o_coords = [[],[],[]] #original coords
+    m_coords = [[],[],[]] #modded coords
     
 
 # x_tgAlfa = (np.tan(np.deg2rad(0.4)))
@@ -195,31 +193,59 @@ def modify_gcode_line(line, x_value, y_value):
     mod_label.configure(text="saved")
     return line
 
+def plot(coords1, coords2):
 
+    points1 = np.array([coords1[0], coords1[1], coords1[2]]).T
+    points2 = np.array([coords2[0], coords2[1], coords2[2]]).T
 
-def plot_c(o_coords, m_coords):
+    if len(points1) > 20:
+        points1 = points1[20:]
+    if len(points2) > 20:
+        points2 = points2[20:]
+    if len(points1) > 5:
+        points1 = points1[:-5]
+    if len(points2) > 5:
+        points2 = points2[:-5]
 
-    fig = Figure(figsize=(8, 6), dpi=100)
-    ax = fig.add_subplot(111, projection='3d')
+    pcd1 = o3d.geometry.PointCloud()
+    pcd1.points = o3d.utility.Vector3dVector(points1)  # Poprawne przypisanie punktów
+    pcd1.paint_uniform_color([1, 0, 0])  # Kolor czerwony dla pcd1
 
-    if o_coords[0] and o_coords[1] and o_coords[2]:
-        ax.plot(o_coords[0], o_coords[1], o_coords[2], linewidth=0.01, color='b')
+    pcd2 = o3d.geometry.PointCloud()
+    pcd2.points = o3d.utility.Vector3dVector(points2)  # Poprawne przypisanie punktów
+    pcd2.paint_uniform_color([0, 1, 0]) 
 
-    if m_coords[0] and m_coords[1] and m_coords[2]:
-        ax.plot(m_coords[0], m_coords[1], m_coords[2], linewidth=0.03, color='r')
+        # Tworzenie siatki współrzędnych
+    grid_size = 10
+    grid_step = 1
 
-        ax.set_xlim(0,250)
-        ax.set_ylim(0,250)
-        ax.set_zlim(min(o_coords[2]) - 10, max(o_coords[2]) + 10)
+    # Definiowanie punktów siatki
+    lines = []
+    colors = []
 
+    for i in range(-grid_size, grid_size + 1, grid_step):
+        # Oś X
+        lines.append([np.array([i, -grid_size, 0]), np.array([i, grid_size, 0])])
+        colors.append([0, 0, 1])  # Kolor niebieski dla osi X
+        # Oś Y
+        lines.append([np.array([-grid_size, i, 0]), np.array([grid_size, i, 0])])
+        colors.append([0, 1, 0])  # Kolor zielony dla osi Y
+        # Oś Z
+        lines.append([np.array([0, -grid_size, i]), np.array([0, grid_size, i])])
+        colors.append([1, 0, 0])  # Kolor czerwony dla osi Z
 
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
+    # Tworzenie obiektu LineSet
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(np.vstack(lines))
+    line_set.lines = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(lines))])
+    line_set.colors = o3d.utility.Vector3dVector(colors)
 
-    canvas = FigureCanvasTkAgg(fig, master=window)
-    canvas.draw()
-    canvas.get_tk_widget().grid(row=0, rowspan = 6, column=2, padx=0, pady=0, sticky='nsew')
+    o3d.visualization.draw_geometries([pcd1, pcd2], 
+                                  window_name="Moja chmura punktów", 
+                                  width=800, 
+                                  height=600, 
+                                  point_show_normal=False)
+    return 0
 
 # input_file, base_name =  ask_fn()
 # output_file = ask_dir(base_name)
@@ -273,5 +299,4 @@ fn_label.grid(row=2, column=1, sticky="e")
 dir_label.grid(row=3, column=1, sticky="e")
 mod_label.grid(row=4, column = 1, sticky = "w")
 
-plot_c(o_coords, m_coords)
 window.mainloop()
