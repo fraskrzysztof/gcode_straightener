@@ -6,15 +6,24 @@ from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
 import os
 import sys
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from mpl_toolkits.mplot3d import Axes3D
+
 
 Tk().withdraw()
 window = tk.Tk()
-window.geometry("380x470")
+window.geometry("1200x600")
 window.resizable(width=False, height=False)
 window.title("gcode straightener")
 window.configure(bg="white")
 
 mod_text = " "
+
+
+                #x,y,z
+o_coords = [[],[],[]] #original coords
+m_coords = [[],[],[]] #modded coords
 
 def window_destroy():
 
@@ -38,11 +47,15 @@ def ask_dir():
 
 
 def save_mline(x,y):
-    global input_file, output_file
+    global input_file, output_file, o_coords, m_coords
     with open(input_file, "r") as infile, open(output_file, "w") as outfile:
         for line in infile:
             modified_line = modify_gcode_line(line,x,y)
             outfile.write(modified_line)
+    plot_c(o_coords, m_coords)
+    o_coords = [[],[],[]]
+    m_coords = [[],[],[]]
+    
 
 # x_tgAlfa = (np.tan(np.deg2rad(0.4)))
 # y_tgAlfa = (np.tan(np.deg2rad(0.2)))
@@ -51,10 +64,11 @@ nx = 0.0
 ny = 0.0
 x = 0.0
 y = 0.0
+z = 0.0
 
 def modify_gcode_line(line, x_value, y_value):
     #print(x_value, y_value)
-    global nx, ny, x, y
+    global nx, ny, x, y, z, o_coords, m_coords
     global mod_text
     #nx, ny = 0, 0
     x = float(x_value)
@@ -68,6 +82,7 @@ def modify_gcode_line(line, x_value, y_value):
             z = float(match.group(1))
             nx = x_tgAlfa * z
             ny = y_tgAlfa * z
+
         # -------------------------
     if line.startswith("G1"):
         match2 = re.match(r'G1\s+X([\d.]+)\s+Y([\d.]+)\s+E([\d.]+)', line)
@@ -75,8 +90,18 @@ def modify_gcode_line(line, x_value, y_value):
             x = float(match2.group(1))
             y = float(match2.group(2))
             e = float(match2.group(3))
+
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
             y = y + ny
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
+
+
             return f"G1 X{x:.6f} Y{y:.6f} E{e:.6f}\n"
         # -------------------------------
     if line.startswith("G1"):
@@ -86,8 +111,16 @@ def modify_gcode_line(line, x_value, y_value):
             y = float(match3.group(2))
             e = float(match3.group(3))
 
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
             y = y + ny
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
+
             return f"G1 X{x:.6f} Y{y:.6f} E-{e:.6f}\n"
 
     if line.startswith("G1"):
@@ -96,8 +129,16 @@ def modify_gcode_line(line, x_value, y_value):
             x = float(match4.group(1))
             y = float(match4.group(2))
 
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
             y = y + ny
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
+
             return f"G1 X{x:.6f} Y{y:.6f}\n"
 
     if line.startswith("G1"):
@@ -106,7 +147,14 @@ def modify_gcode_line(line, x_value, y_value):
             x = float(match5.group(1))
             f = float(match5.group(2))
 
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
             return f"G1 X{x:.6f} F{f:.6f}\n"
 
     if line.startswith("G1"):
@@ -116,7 +164,15 @@ def modify_gcode_line(line, x_value, y_value):
             e = float(match6.group(2))
             f = float(match6.group(3))
 
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
+
             return f"G1 Y{x:.4f} E{e:.6f} F{f:.6f}\n"
 
     if line.startswith("G1"):
@@ -126,10 +182,44 @@ def modify_gcode_line(line, x_value, y_value):
             e = float(match7.group(2))
             f = float(match7.group(3))
 
+            o_coords[0].append(x)
+            o_coords[1].append(y)
+            o_coords[2].append(z)
+
             x = x + nx
+            m_coords[0].append(x)
+            m_coords[1].append(y)
+            m_coords[2].append(z)
             return f"G1 Y{x:.6f} E-{e:.6f} F{f:.6f}\n"
-    mod_label.configure(text="calibrated")
+
+    mod_label.configure(text="saved")
     return line
+
+
+
+def plot_c(o_coords, m_coords):
+
+    fig = Figure(figsize=(8, 6), dpi=100)
+    ax = fig.add_subplot(111, projection='3d')
+
+    if o_coords[0] and o_coords[1] and o_coords[2]:
+        ax.plot(o_coords[0], o_coords[1], o_coords[2], linewidth=0.01, color='b')
+
+    if m_coords[0] and m_coords[1] and m_coords[2]:
+        ax.plot(m_coords[0], m_coords[1], m_coords[2], linewidth=0.03, color='r')
+
+        ax.set_xlim(0,250)
+        ax.set_ylim(0,250)
+        ax.set_zlim(min(o_coords[2]) - 10, max(o_coords[2]) + 10)
+
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+    canvas = FigureCanvasTkAgg(fig, master=window)
+    canvas.draw()
+    canvas.get_tk_widget().grid(row=0, rowspan = 6, column=2, padx=0, pady=0, sticky='nsew')
 
 # input_file, base_name =  ask_fn()
 # output_file = ask_dir(base_name)
@@ -161,7 +251,7 @@ y = y_value
 
 browse_button = tk.Button(input_frame, text="input file", command=lambda:ask_fn(),width=15)
 dir_button =    tk.Button(output_frame, text="output directory", command=lambda: ask_dir(),width=15)
-modify_button = tk.Button(window, text="compute", command=lambda: save_mline(x_value.get(), y_value.get()), width = 15)
+modify_button = tk.Button(window, text="save", command=lambda: save_mline(x_value.get(), y_value.get()), width = 15)
 exit_button =   tk.Button(window, text="exit", command=lambda:window_destroy(),width=15)
 
 x_label = tk.Label(axis_frame, text="x axis:", bg = "white", anchor="w")
@@ -183,4 +273,5 @@ fn_label.grid(row=2, column=1, sticky="e")
 dir_label.grid(row=3, column=1, sticky="e")
 mod_label.grid(row=4, column = 1, sticky = "w")
 
+plot_c(o_coords, m_coords)
 window.mainloop()
